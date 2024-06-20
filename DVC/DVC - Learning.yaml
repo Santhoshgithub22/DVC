@@ -1,0 +1,75 @@
+# DVC - FOR PIPELINE TRACKING
+
+# I am going to use the dvc for pipeline tracking
+# Once I run the main.py (all the components is again and again)
+# Data is downloading again and again
+# That is the major issue, when we are doing the end to end projects, It will take some time, because it will train the model again and again
+# It takes time
+# Let say If everything is updated already, so why you will be training this again and again,
+# Can we track this pipeline like the git we do
+
+# So using DVC, Using that actually you can do the pipeline tracking, 
+#so it will track the pipeline, so which pipeline you have actually executed and it is available or not
+
+# If there is no change in any pipeline, so that particular step will be skip, and it will run the next component,
+# If next component also not updated, it will move to next one.
+
+# By using dvc, it will reduce your time and effort
+
+# In first thing, which pipeline you are running
+# First we are running our data ingestion pipeline, because this our first component and first pipeline
+
+stages:
+  data_ingestion:
+    cmd: python/Kidney_Disease_Classifier/pipeline/stage_01_data_jngestion.py
+    deps:
+      - src/Kidney_Disease_Classifier/pipeline/stage_01_data_ingestion.py
+      - research/kidney_disease_CT_scan_images.zip
+      - config/config.yaml
+    outs:
+      - artifacts/data_ingestion/data.zip
+      - artifacts/data_ingestion/kidney_disease_CT_scan_images
+
+  prepare_base_model:
+    cmd: python src/Kidney_Disease_Classifier/pipeline/stage_02_prepare_base_model.py
+    deps:
+      - src/Kidney_Disease_Classifier/stage_02_prepare_base_model.py
+      - config/config.yaml
+    params:
+      - IMAGE_SIZE
+      - INCLUDE_TOP
+      - CLASSES
+      - WEIGHTS
+      - LEARNING_RATE
+    outs:
+      - artifacts/prepare_base_model
+
+  training:
+    cmd: python src/Kidney_Disease_Classifier/pipeline/stage_03_training_pipeline.py
+    deps:
+      - src/Kidney_Disease_Classifier/pipeline/stage_03_model_training.py
+      - config/config.yaml
+      - artifacts/data_ingestion/kidney_disease_CT_scan_images
+      - artifacts/prepare_base_model
+    params:
+    - BATCH_SIZE
+      - IMAGE_SIZE
+      - EPOCHS
+      - BATCH_SIZE
+      - AUGUMENTATION
+    outs:
+      - artifacts/training/model.h5
+
+  evaluation:
+    cmd: python src/Kidney_Disease_Classifier/pipeline/stage_04_model_evaluation.py
+    deps:
+      - src/Kidney_Disease_Classifier/stage_04_model_evaluation.py
+      - config/config.yaml
+      - artifacts/data_ingestion/kidney_disease_CT_scan_images
+      - artifacts/training/model.h5
+    params:
+      - IMAGE_SIZE
+      - BATCH_SIZE
+    metrics:
+      - scores.json:
+        cache: false
